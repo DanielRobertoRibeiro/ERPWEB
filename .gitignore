@@ -1,0 +1,13 @@
+# Segredos e configuração local
+.env
+Backend/.env
+
+# Ambientes e caches Python
+__pycache__/
+*.py[cod]
+Backend/.venv*/
+.venv/
+
+# Configurações de IDE
+.idea/
+.vscode/

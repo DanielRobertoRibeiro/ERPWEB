@@ -6,103 +6,17 @@
 
 
 /* ============================================================
-   DADOS INICIAIS
+   DADOS DA API
 ============================================================ */
 
-let clients = [
-    {
-        id: 1,
-        company: "Carlos Almeida Tintas Ltda",
-        name: "Tintas Carlos",
-        state: "SP",
-        status: "Ativo",
-        revenue: 185000
-    },
+const API_BASE_URL =
+    window.ERP_CONFIG?.apiBaseUrl ||
+    "http://127.0.0.1:5000/api";
 
-    {
-        id: 2,
-        company: "Souza Decorações ME",
-        name: "Souza Decorações",
-        state: "RJ",
-        status: "Ativo",
-        revenue: 92000
-    },
-
-    {
-        id: 3,
-        company: "Pintura Nova Comércio Ltda",
-        name: "Pintura Nova",
-        state: "MG",
-        status: "Ativo",
-        revenue: 245000
-    },
-
-    {
-        id: 4,
-        company: "Casa das Cores Ltda",
-        name: "Casa das Cores",
-        state: "PR",
-        status: "Ativo",
-        revenue: 130000
-    },
-
-    {
-        id: 5,
-        company: "Constrular Materiais Ltda",
-        name: "Constrular",
-        state: "SP",
-        status: "Inativo",
-        revenue: 76000
-    }
-];
-
-
-let products = [
-    {
-        id: 1,
-        name: "Tinta Acrílica Premium",
-        category: "Tintas",
-        brand: "Coral",
-        stock: 50,
-        price: 189.90
-    },
-
-    {
-        id: 2,
-        name: "Verniz Marítimo",
-        category: "Vernizes",
-        brand: "Suvinil",
-        stock: 30,
-        price: 145.50
-    },
-
-    {
-        id: 3,
-        name: "Tinta Esmalte Sintético",
-        category: "Tintas",
-        brand: "Sherwin-Williams",
-        stock: 75,
-        price: 89.90
-    },
-
-    {
-        id: 4,
-        name: "Verniz Acrílico",
-        category: "Vernizes",
-        brand: "Coral",
-        stock: 40,
-        price: 79.90
-    },
-
-    {
-        id: 5,
-        name: "Tinta Epóxi",
-        category: "Tintas",
-        brand: "Montana",
-        stock: 8,
-        price: 220
-    }
-];
+let clients = [];
+let products = [];
+let isLoading = true;
+let dataLoadError = "";
 
 
 /* ============================================================
@@ -139,6 +53,12 @@ const toast =
 const toastMessage =
     document.querySelector("#toast-message");
 
+const systemStatusDot =
+    document.querySelector("#system-status-dot");
+
+const systemStatusText =
+    document.querySelector("#system-status-text");
+
 
 /* ============================================================
    CAMPOS DO CLIENTE
@@ -146,6 +66,9 @@ const toastMessage =
 
 const clientCompany =
     document.querySelector("#client-company");
+
+const clientCnpj =
+    document.querySelector("#client-cnpj");
 
 const clientName =
     document.querySelector("#client-name");
@@ -158,6 +81,9 @@ const clientStatus =
 
 const clientRevenue =
     document.querySelector("#client-revenue");
+
+const modalSubmit =
+    document.querySelector("#modal-submit");
 
 
 /* ============================================================
@@ -202,6 +128,7 @@ function setFormMode(mode) {
 
     const clientInputFields = [
         clientCompany,
+        clientCnpj,
         clientName,
         clientState,
         clientStatus,
@@ -272,6 +199,107 @@ function showToast(message) {
         toast.classList.remove("show");
 
     }, 2500);
+
+}
+
+
+/* ============================================================
+   COMUNICAÇÃO COM A API
+============================================================ */
+
+async function apiRequest(path, options = {}) {
+
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+        headers: {
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+        },
+        ...options
+    });
+
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok || !body.success) {
+        throw new Error(body.message || "Não foi possível concluir a requisição.");
+    }
+
+    return body;
+
+}
+
+
+function setSaving(isSaving) {
+
+    if (!modalSubmit) return;
+
+    modalSubmit.disabled = isSaving;
+    modalSubmit.textContent = isSaving ? "Salvando..." : "Salvar";
+
+}
+
+
+function setSystemStatus(status, message) {
+
+    if (systemStatusDot) {
+        systemStatusDot.classList.toggle("loading", status === "loading");
+        systemStatusDot.classList.toggle("error", status === "error");
+    }
+
+    if (systemStatusText) {
+        systemStatusText.textContent = message;
+    }
+
+}
+
+
+async function loadInitialData() {
+
+    isLoading = true;
+    dataLoadError = "";
+    setSystemStatus("loading", "Conectando ao servidor...");
+    renderClients();
+    renderProducts();
+
+    try {
+
+        const [clientsResponse, productsResponse] = await Promise.all([
+            apiRequest("/clientes"),
+            apiRequest("/produtos")
+        ]);
+
+        clients = clientsResponse.data;
+        products = productsResponse.data;
+        setSystemStatus("online", "Sistema online");
+
+    } catch (error) {
+
+        console.error(error);
+        dataLoadError = error instanceof TypeError
+            ? "Não foi possível acessar a API. Verifique se o servidor Flask está em execução."
+            : error.message;
+        setSystemStatus("error", "Sistema indisponível");
+        showToast(dataLoadError);
+
+    } finally {
+
+        isLoading = false;
+        renderClients();
+        renderProducts();
+        updateDashboard();
+
+    }
+
+}
+
+
+function escapeHtml(value) {
+
+    return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 
 }
 
@@ -376,6 +404,28 @@ function renderClients(list = clients) {
 
     if (!tbody) return;
 
+    if (isLoading) {
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">Carregando clientes...</td>
+            </tr>
+        `;
+        return;
+
+    }
+
+    if (dataLoadError) {
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">${escapeHtml(dataLoadError)}</td>
+            </tr>
+        `;
+        return;
+
+    }
+
 
     if (count) {
 
@@ -412,21 +462,21 @@ function renderClients(list = clients) {
 
                 <td>
                     <strong>
-                        ${client.company}
+                        ${escapeHtml(client.company)}
                     </strong>
                 </td>
 
                 <td>
-                    ${client.name}
+                    ${escapeHtml(client.name)}
                 </td>
 
                 <td>
-                    ${client.state}
+                    ${escapeHtml(client.state)}
                 </td>
 
                 <td>
                     <span class="status ${statusClass}">
-                        ${client.status}
+                        ${escapeHtml(client.status)}
                     </span>
                 </td>
 
@@ -483,6 +533,28 @@ function renderProducts(list = products) {
 
     if (!tbody) return;
 
+    if (isLoading) {
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">Carregando produtos...</td>
+            </tr>
+        `;
+        return;
+
+    }
+
+    if (dataLoadError) {
+
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">${escapeHtml(dataLoadError)}</td>
+            </tr>
+        `;
+        return;
+
+    }
+
 
     if (count) {
 
@@ -527,16 +599,16 @@ function renderProducts(list = products) {
 
                 <td>
                     <strong>
-                        ${product.name}
+                        ${escapeHtml(product.name)}
                     </strong>
                 </td>
 
                 <td>
-                    ${product.category}
+                    ${escapeHtml(product.category)}
                 </td>
 
                 <td>
-                    ${product.brand}
+                    ${escapeHtml(product.brand)}
                 </td>
 
                 <td class="${stockClass}">
@@ -768,6 +840,9 @@ function openModal(entity, id = null) {
             clientCompany.value =
                 client.company;
 
+            clientCnpj.value =
+                client.cnpj;
+
             clientName.value =
                 client.name;
 
@@ -982,12 +1057,15 @@ entityForm.addEventListener(
    SALVAR CLIENTE
 ============================================================ */
 
-function saveClient() {
+async function saveClient() {
 
     const clientData = {
 
         company:
             clientCompany.value.trim(),
+
+        cnpj:
+            clientCnpj.value.trim(),
 
         name:
             clientName.value.trim(),
@@ -1006,54 +1084,45 @@ function saveClient() {
     };
 
 
-    if (editingId) {
+    try {
 
-        const index =
-            clients.findIndex(
-                client =>
-                    client.id === editingId
+        setSaving(true);
+
+        const response = await apiRequest(
+            editingId ? `/clientes/${editingId}` : "/clientes",
+            {
+                method: editingId ? "PUT" : "POST",
+                body: JSON.stringify(clientData)
+            }
+        );
+
+        if (editingId) {
+
+            clients = clients.map(client =>
+                client.id === editingId ? response.data : client
             );
 
+        } else {
 
-        if (index === -1) return;
+            clients.push(response.data);
 
+        }
 
-        clients[index] = {
+        renderClients();
+        updateDashboard();
+        closeModal();
+        showToast(response.message);
 
-            id: editingId,
+    } catch (error) {
 
-            ...clientData
+        console.error(error);
+        showToast(error.message);
 
-        };
+    } finally {
 
-
-        showToast(
-            "Cliente atualizado com sucesso."
-        );
-
-    } else {
-
-        clients.push({
-
-            id: Date.now(),
-
-            ...clientData
-
-        });
-
-
-        showToast(
-            "Cliente cadastrado com sucesso."
-        );
+        setSaving(false);
 
     }
-
-
-    renderClients();
-
-    updateDashboard();
-
-    closeModal();
 
 }
 
@@ -1062,7 +1131,7 @@ function saveClient() {
    SALVAR PRODUTO
 ============================================================ */
 
-function saveProduct() {
+async function saveProduct() {
 
     const productData = {
 
@@ -1088,54 +1157,45 @@ function saveProduct() {
     };
 
 
-    if (editingId) {
+    try {
 
-        const index =
-            products.findIndex(
-                product =>
-                    product.id === editingId
+        setSaving(true);
+
+        const response = await apiRequest(
+            editingId ? `/produtos/${editingId}` : "/produtos",
+            {
+                method: editingId ? "PUT" : "POST",
+                body: JSON.stringify(productData)
+            }
+        );
+
+        if (editingId) {
+
+            products = products.map(product =>
+                product.id === editingId ? response.data : product
             );
 
+        } else {
 
-        if (index === -1) return;
+            products.push(response.data);
 
+        }
 
-        products[index] = {
+        renderProducts();
+        updateDashboard();
+        closeModal();
+        showToast(response.message);
 
-            id: editingId,
+    } catch (error) {
 
-            ...productData
+        console.error(error);
+        showToast(error.message);
 
-        };
+    } finally {
 
-
-        showToast(
-            "Produto atualizado com sucesso."
-        );
-
-    } else {
-
-        products.push({
-
-            id: Date.now(),
-
-            ...productData
-
-        });
-
-
-        showToast(
-            "Produto cadastrado com sucesso."
-        );
+        setSaving(false);
 
     }
-
-
-    renderProducts();
-
-    updateDashboard();
-
-    closeModal();
 
 }
 
@@ -1172,7 +1232,7 @@ function editProduct(id) {
    EXCLUIR CLIENTE
 ============================================================ */
 
-function deleteClient(id) {
+async function deleteClient(id) {
 
     const client =
         clients.find(
@@ -1192,20 +1252,23 @@ function deleteClient(id) {
     if (!confirmed) return;
 
 
-    clients =
-        clients.filter(
-            item => item.id !== id
-        );
+    try {
 
+        const response = await apiRequest(`/clientes/${id}`, {
+            method: "DELETE"
+        });
 
-    renderClients();
+        clients = clients.filter(item => item.id !== id);
+        renderClients();
+        updateDashboard();
+        showToast(response.message);
 
-    updateDashboard();
+    } catch (error) {
 
+        console.error(error);
+        showToast(error.message);
 
-    showToast(
-        "Cliente excluído com sucesso."
-    );
+    }
 
 }
 
@@ -1214,7 +1277,7 @@ function deleteClient(id) {
    EXCLUIR PRODUTO
 ============================================================ */
 
-function deleteProduct(id) {
+async function deleteProduct(id) {
 
     const product =
         products.find(
@@ -1234,20 +1297,23 @@ function deleteProduct(id) {
     if (!confirmed) return;
 
 
-    products =
-        products.filter(
-            item => item.id !== id
-        );
+    try {
 
+        const response = await apiRequest(`/produtos/${id}`, {
+            method: "DELETE"
+        });
 
-    renderProducts();
+        products = products.filter(item => item.id !== id);
+        renderProducts();
+        updateDashboard();
+        showToast(response.message);
 
-    updateDashboard();
+    } catch (error) {
 
+        console.error(error);
+        showToast(error.message);
 
-    showToast(
-        "Produto excluído com sucesso."
-    );
+    }
 
 }
 
@@ -1536,8 +1602,4 @@ function downloadFinancialReport() {
 
 setFormMode(null);
 
-renderClients();
-
-renderProducts();
-
-updateDashboard();
+loadInitialData();

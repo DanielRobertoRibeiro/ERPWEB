@@ -1089,3 +1089,11 @@ td strong {
     }
 
 }
+
+.status-dot.loading {
+    background: #d7a038;
+}
+
+.status-dot.error {
+    background: #df5b5b;
+}

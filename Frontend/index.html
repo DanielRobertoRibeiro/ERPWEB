@@ -36,22 +36,22 @@
 
         <nav class="navigation">
 
-            <button class="nav-item active" data-page="dashboard">
+            <button type="button" class="nav-item active" data-page="dashboard">
                 <span class="nav-icon">⌂</span>
                 <span>Dashboard</span>
             </button>
 
-            <button class="nav-item" data-page="clientes">
+            <button type="button" class="nav-item" data-page="clientes">
                 <span class="nav-icon">♙</span>
                 <span>Clientes</span>
             </button>
 
-            <button class="nav-item" data-page="produtos">
+            <button type="button" class="nav-item" data-page="produtos">
                 <span class="nav-icon">▦</span>
                 <span>Produtos</span>
             </button>
 
-            <button class="nav-item" data-page="relatorios">
+            <button type="button" class="nav-item" data-page="relatorios">
                 <span class="nav-icon">▤</span>
                 <span>Relatórios</span>
             </button>
@@ -60,9 +60,9 @@
 
         <div class="sidebar-footer">
 
-            <span class="status-dot"></span>
+            <span class="status-dot" id="system-status-dot"></span>
 
-            <span>Sistema online</span>
+            <span id="system-status-text">Verificando sistema...</span>
 
         </div>
 
@@ -79,7 +79,7 @@
 
         <header class="topbar">
 
-            <button class="mobile-menu" id="mobile-menu">
+            <button type="button" class="mobile-menu" id="mobile-menu">
                 ☰
             </button>
 
@@ -142,6 +142,7 @@
                 </div>
 
                 <button
+                    type="button"
                     class="primary"
                     data-page-link="clientes">
 
@@ -343,6 +344,7 @@
                 </div>
 
                 <button
+                    type="button"
                     class="primary dark"
                     id="new-client">
 
@@ -443,6 +445,7 @@
                 </div>
 
                 <button
+                    type="button"
                     class="primary dark"
                     id="new-product">
 
@@ -562,6 +565,7 @@
                     </p>
 
                     <button
+                        type="button"
                         class="secondary"
                         data-report="clientes">
 
@@ -587,6 +591,7 @@
                     </p>
 
                     <button
+                        type="button"
                         class="secondary"
                         data-report="produtos">
 
@@ -612,6 +617,7 @@
                     </p>
 
                     <button
+                        type="button"
                         class="secondary"
                         data-report="financeiro">
 
@@ -653,6 +659,7 @@
                 </div>
 
                 <button
+                    type="button"
                     class="modal-close"
                     id="modal-close">
 
@@ -679,6 +686,21 @@
                                 id="client-company"
                                 required
                                 placeholder="Ex.: Empresa Comercial Ltda">
+
+                        </div>
+
+                        <div class="form-group">
+
+                            <label for="client-cnpj">
+                                CNPJ
+                            </label>
+
+                            <input
+                                id="client-cnpj"
+                                inputmode="numeric"
+                                maxlength="18"
+                                required
+                                placeholder="00.000.000/0000-00">
 
                         </div>
 
@@ -871,7 +893,8 @@
 
                     <button
                         type="submit"
-                        class="primary dark">
+                        class="primary dark"
+                        id="modal-submit">
 
                         Salvar
 
@@ -899,6 +922,7 @@
     </div>
 
 
+    <script src="config.js"></script>
     <script src="script.js"></script>
 
 </body>
